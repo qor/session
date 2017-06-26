@@ -8,6 +8,8 @@ It wrap other session management into a common interface, allow you to use  http
 Add(request, name, value string/interface{})
 Pop(request, name) string
 Get(request, name) string
-Load(request, name, struct{})
 
-Save(r, w) // middleware
+Flash(request, session.Message{Message: message, Type: "warning"}) // alias of Add
+Load(request, name, struct{}) // alias of Get
+
+Save(r, w) // in middleware

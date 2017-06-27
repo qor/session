@@ -15,7 +15,11 @@ type SCS struct {
 	scssession.Engine
 }
 
-func (scs SCS) Add(req *http.Request, key string, value interface{}) {
+func (scs SCS) Add(req *http.Request, key string, value interface{}) error {
+	if str, ok := value.(string); ok {
+		return scssession.PutString(req, key, str)
+	}
+	return scssession.PutObject(req, key, value)
 }
 
 func (scs SCS) Pop(req *http.Request, key string) string {
@@ -23,7 +27,8 @@ func (scs SCS) Pop(req *http.Request, key string) string {
 }
 
 func (scs SCS) Get(req *http.Request, key string) string {
-	return ""
+	result, _ := scssession.GetString(req, key)
+	return result
 }
 
 func (scs SCS) Flash(req *http.Request, message session.Message) {
@@ -32,5 +37,6 @@ func (scs SCS) Flash(req *http.Request, message session.Message) {
 func (scs SCS) Load(req *http.Request, key string, result interface{}) {
 }
 
-func (scs SCS) Save(req *http.Request, w http.ResponseWriter) {
+func (scs SCS) Save(req *http.Request, w http.ResponseWriter) error {
+	return nil
 }

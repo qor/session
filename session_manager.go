@@ -8,8 +8,8 @@ type ManagerInterface interface {
 	Pop(req *http.Request, key string) string
 	Get(req *http.Request, key string) string
 
-	Flash(req *http.Request, message Message)
-	Load(req *http.Request, key string, result interface{})
+	Flash(req *http.Request, message Message) error
+	Load(req *http.Request, key string, result interface{}) error
 
 	Save(req *http.Request, w http.ResponseWriter) error
 }

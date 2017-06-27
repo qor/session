@@ -31,10 +31,12 @@ func (scs SCS) Get(req *http.Request, key string) string {
 	return result
 }
 
-func (scs SCS) Flash(req *http.Request, message session.Message) {
+func (scs SCS) Flash(req *http.Request, message session.Message) error {
+	return nil
 }
 
-func (scs SCS) Load(req *http.Request, key string, result interface{}) {
+func (scs SCS) Load(req *http.Request, key string, result interface{}) error {
+	return nil
 }
 
 func (scs SCS) Save(req *http.Request, w http.ResponseWriter) error {

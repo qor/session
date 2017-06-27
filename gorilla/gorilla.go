@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gorilla/context"
 	"github.com/gorilla/sessions"
 	"github.com/qor/session"
 )
@@ -85,10 +86,15 @@ func (gorilla Gorilla) PopLoad(req *http.Request, key string, result interface{}
 	return nil
 }
 
-func (gorilla Gorilla) Save(req *http.Request, w http.ResponseWriter) error {
-	session, err := gorilla.Store.Get(req, gorilla.SessionName)
-	if err != nil {
-		return err
-	}
-	return session.Save(req, w)
+func (gorilla Gorilla) Middleware(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		defer func() {
+			if session, err := gorilla.Store.Get(req, gorilla.SessionName); err == nil {
+				session.Save(req, w)
+			}
+			context.Clear(req)
+		}()
+
+		handler.ServeHTTP(w, req)
+	})
 }

@@ -13,7 +13,7 @@ type ManagerInterface interface {
 	Load(req *http.Request, key string, result interface{}) error
 	PopLoad(req *http.Request, key string, result interface{}) error
 
-	Save(req *http.Request, w http.ResponseWriter) error
+	Middleware(http.Handler) http.Handler
 }
 
 // Message message struct

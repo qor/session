@@ -52,6 +52,9 @@ func (scs SCS) PopLoad(req *http.Request, key string, result interface{}) error 
 	return json.Unmarshal([]byte(value), result)
 }
 
-func (scs SCS) Save(req *http.Request, w http.ResponseWriter) error {
-	return nil
+func (scs SCS) Middleware(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// FIXME
+		handler.ServeHTTP(w, req)
+	})
 }

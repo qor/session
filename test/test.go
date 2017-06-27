@@ -1,21 +1,75 @@
 package test
 
 import (
+	"fmt"
+	"io/ioutil"
 	"net/http"
+	"net/http/cookiejar"
+	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/qor/session"
 )
 
-func TestAll(manager session.ManagerInterface, t *testing.T) {
-	TestSesionManagerAddAndGet(manager, t)
-	TestSesionManagerAddAndPop(manager, t)
-	TestFlash(manager, t)
-	TestLoad(manager, t)
+var Server *httptest.Server
+
+type Site struct {
+	SessionManager session.ManagerInterface
 }
 
-func TestSesionManagerAddAndGet(manager session.ManagerInterface, t *testing.T) {
+func (site Site) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	switch req.URL.Path {
+	case "/get":
+		value := site.SessionManager.Get(req, req.URL.Query().Get("key"))
+		w.Write([]byte(value))
+	case "/pop":
+		value := site.SessionManager.Pop(req, req.URL.Query().Get("key"))
+		w.Write([]byte(value))
+	case "/set":
+		err := site.SessionManager.Add(req, req.URL.Query().Get("key"), req.URL.Query().Get("value"))
+		if err != nil {
+			panic(fmt.Sprintf("No error should happe when set session, but got %v", err))
+		}
+	}
+}
+
+func TestAll(manager session.ManagerInterface, t *testing.T) {
+	Server = httptest.NewServer(manager.Middleware(Site{SessionManager: manager}))
+
 	req, _ := http.NewRequest("GET", "/", nil)
+	TestSesionManagerAddAndGet(req, manager, t)
+	TestSesionManagerAddAndPop(req, manager, t)
+	TestFlash(req, manager, t)
+	TestLoad(req, manager, t)
+	TestRequest(manager, t)
+}
+
+func TestRequest(manager session.ManagerInterface, t *testing.T) {
+	resp, err := http.Get(Server.URL + "/set?key=key1&value=value1")
+	if err != nil {
+		t.Errorf("no error should happen when request set cookie")
+	}
+
+	cookieJar, _ := cookiejar.New(nil)
+	url, _ := url.Parse(Server.URL)
+	cookieJar.SetCookies(url, resp.Cookies())
+
+	client := &http.Client{
+		Jar: cookieJar,
+	}
+
+	resp, err = client.Get(Server.URL + "/get?key=key1")
+	if err != nil {
+		t.Errorf("no error should happend when request get cookie")
+	}
+	responseData, _ := ioutil.ReadAll(resp.Body)
+	if string(responseData) != "value1" {
+		t.Errorf("failed to get saved session")
+	}
+}
+
+func TestSesionManagerAddAndGet(req *http.Request, manager session.ManagerInterface, t *testing.T) {
 	if err := manager.Add(req, "key", "value"); err != nil {
 		t.Errorf("Should add session correctly, but got %v", err)
 	}
@@ -29,8 +83,21 @@ func TestSesionManagerAddAndGet(manager session.ManagerInterface, t *testing.T) 
 	}
 }
 
-func TestSesionManagerAddAndPop(manager session.ManagerInterface, t *testing.T) {
-	req, _ := http.NewRequest("GET", "/", nil)
+func TestSesionManagerAddAndGet1(req *http.Request, manager session.ManagerInterface, t *testing.T) {
+	if err := manager.Add(req, "key", "value"); err != nil {
+		t.Errorf("Should add session correctly, but got %v", err)
+	}
+
+	if value := manager.Get(req, "key"); value != "value" {
+		t.Errorf("failed to fetch saved session value, got %#v", value)
+	}
+
+	if value := manager.Get(req, "key"); value != "value" {
+		t.Errorf("possible to re-fetch saved session value, got %#v", value)
+	}
+}
+
+func TestSesionManagerAddAndPop(req *http.Request, manager session.ManagerInterface, t *testing.T) {
 	if err := manager.Add(req, "key", "value"); err != nil {
 		t.Errorf("Should add session correctly, but got %v", err)
 	}
@@ -44,8 +111,7 @@ func TestSesionManagerAddAndPop(manager session.ManagerInterface, t *testing.T) 
 	}
 }
 
-func TestFlash(manager session.ManagerInterface, t *testing.T) {
-	req, _ := http.NewRequest("GET", "/", nil)
+func TestFlash(req *http.Request, manager session.ManagerInterface, t *testing.T) {
 	if err := manager.Flash(req, session.Message{
 		Message: "hello1",
 	}); err != nil {
@@ -69,7 +135,7 @@ func TestFlash(manager session.ManagerInterface, t *testing.T) {
 	}
 }
 
-func TestLoad(manager session.ManagerInterface, t *testing.T) {
+func TestLoad(req *http.Request, manager session.ManagerInterface, t *testing.T) {
 	type result struct {
 		Name    string
 		Age     int
@@ -77,7 +143,6 @@ func TestLoad(manager session.ManagerInterface, t *testing.T) {
 	}
 
 	user := result{Name: "jinzhu", Age: 18, Actived: true}
-	req, _ := http.NewRequest("GET", "/", nil)
 	manager.Add(req, "current_user", user)
 
 	var user1 result

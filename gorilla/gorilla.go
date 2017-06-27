@@ -19,11 +19,19 @@ type Gorilla struct {
 }
 
 func (gorilla Gorilla) Add(req *http.Request, key string, value interface{}) error {
-	if session, err := gorilla.Store.Get(req, gorilla.SessionName); err == nil {
-		session.Values[key] = value
-	} else {
+	session, err := gorilla.Store.Get(req, gorilla.SessionName)
+
+	if err != nil {
 		return err
 	}
+
+	if str, ok := value.(string); ok {
+		session.Values[key] = str
+	} else {
+		result, _ := json.Marshal(value)
+		session.Values[key] = string(result)
+	}
+
 	return nil
 }
 
@@ -55,8 +63,22 @@ func (gorilla Gorilla) Flash(req *http.Request, message session.Message) error {
 	return gorilla.Add(req, "_flashes", messages)
 }
 
+func (gorilla Gorilla) Flashes(req *http.Request) []session.Message {
+	var messages []session.Message
+	gorilla.PopLoad(req, "_flashes", &messages)
+	return messages
+}
+
 func (gorilla Gorilla) Load(req *http.Request, key string, result interface{}) error {
 	value := gorilla.Get(req, key)
+	if value != "" {
+		return json.Unmarshal([]byte(value), result)
+	}
+	return nil
+}
+
+func (gorilla Gorilla) PopLoad(req *http.Request, key string, result interface{}) error {
+	value := gorilla.Pop(req, key)
 	return json.Unmarshal([]byte(value), result)
 }
 

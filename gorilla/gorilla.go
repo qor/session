@@ -79,7 +79,10 @@ func (gorilla Gorilla) Load(req *http.Request, key string, result interface{}) e
 
 func (gorilla Gorilla) PopLoad(req *http.Request, key string, result interface{}) error {
 	value := gorilla.Pop(req, key)
-	return json.Unmarshal([]byte(value), result)
+	if value != "" {
+		return json.Unmarshal([]byte(value), result)
+	}
+	return nil
 }
 
 func (gorilla Gorilla) Save(req *http.Request, w http.ResponseWriter) error {

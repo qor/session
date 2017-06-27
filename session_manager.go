@@ -11,6 +11,7 @@ type ManagerInterface interface {
 	Flash(req *http.Request, message Message) error
 	Flashes(req *http.Request) []Message
 	Load(req *http.Request, key string, result interface{}) error
+	PopLoad(req *http.Request, key string, result interface{}) error
 
 	Save(req *http.Request, w http.ResponseWriter) error
 }

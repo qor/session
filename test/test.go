@@ -31,6 +31,9 @@ func (site Site) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			panic(fmt.Sprintf("No error should happe when set session, but got %v", err))
 		}
+
+		value := site.SessionManager.Get(req, req.URL.Query().Get("key"))
+		w.Write([]byte(value))
 	}
 }
 
@@ -46,26 +49,49 @@ func TestAll(manager session.ManagerInterface, t *testing.T) {
 }
 
 func TestRequest(manager session.ManagerInterface, t *testing.T) {
-	resp, err := http.Get(Server.URL + "/set?key=key1&value=value1")
-	if err != nil {
-		t.Errorf("no error should happen when request set cookie")
+	maps := map[string]interface{}{
+		"key":               "value",
+		"中文测试":              "中文测试",
+		"<html> &tag, test": "<html> &tag, test",
 	}
 
-	cookieJar, _ := cookiejar.New(nil)
-	url, _ := url.Parse(Server.URL)
-	cookieJar.SetCookies(url, resp.Cookies())
+	for key, value := range maps {
+		setQuery := url.Values{}
+		setQuery.Add("key", key)
+		setQuery.Add("value", fmt.Sprint(value))
 
-	client := &http.Client{
-		Jar: cookieJar,
-	}
+		// Set cookie
+		resp, err := http.Get(Server.URL + "/set?" + setQuery.Encode())
+		if err != nil {
+			t.Errorf("no error should happen when request set cookie")
+		}
 
-	resp, err = client.Get(Server.URL + "/get?key=key1")
-	if err != nil {
-		t.Errorf("no error should happend when request get cookie")
-	}
-	responseData, _ := ioutil.ReadAll(resp.Body)
-	if string(responseData) != "value1" {
-		t.Errorf("failed to get saved session")
+		// Test get cookie in same request
+		responseData, _ := ioutil.ReadAll(resp.Body)
+		if string(responseData) != value {
+			t.Errorf("failed to get saved session, expect %v, but got %v", value, string(responseData))
+		}
+
+		// Get cookie in another request
+		cookieJar, _ := cookiejar.New(nil)
+		u, _ := url.Parse(Server.URL)
+		cookieJar.SetCookies(u, resp.Cookies())
+
+		client := &http.Client{
+			Jar: cookieJar,
+		}
+
+		getQuery := url.Values{}
+		getQuery.Add("key", key)
+		resp, err = client.Get(Server.URL + "/get?" + getQuery.Encode())
+		if err != nil {
+			t.Errorf("no error should happend when request get cookie")
+		}
+
+		responseData2, _ := ioutil.ReadAll(resp.Body)
+		if string(responseData2) != value {
+			t.Errorf("failed to get saved session, expect %v, but got %v", value, string(responseData2))
+		}
 	}
 }
 

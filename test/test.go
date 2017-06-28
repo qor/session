@@ -37,11 +37,25 @@ func (site Site) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+type server struct {
+	req *http.Request
+}
+
+func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.req = r
+}
+
 func TestAll(manager session.ManagerInterface, t *testing.T) {
 	Server = httptest.NewServer(manager.Middleware(Site{SessionManager: manager}))
 	newReq := func() *http.Request {
-		req, _ := http.NewRequest("GET", "/", nil)
-		return req
+		var (
+			req, _ = http.NewRequest("GET", "/", nil)
+			w      = httptest.NewRecorder()
+		)
+
+		s := &server{}
+		manager.Middleware(s).ServeHTTP(w, req)
+		return s.req
 	}
 
 	TestWithRequest(manager, t)

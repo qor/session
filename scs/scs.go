@@ -51,12 +51,18 @@ func (scs SCS) Flashes(req *http.Request) []session.Message {
 
 func (scs SCS) Load(req *http.Request, key string, result interface{}) error {
 	value := scs.Get(req, key)
-	return json.Unmarshal([]byte(value), result)
+	if value != "" {
+		return json.Unmarshal([]byte(value), result)
+	}
+	return nil
 }
 
 func (scs SCS) PopLoad(req *http.Request, key string, result interface{}) error {
 	value := scs.Pop(req, key)
-	return json.Unmarshal([]byte(value), result)
+	if value != "" {
+		return json.Unmarshal([]byte(value), result)
+	}
+	return nil
 }
 
 func (scs SCS) Middleware(handler http.Handler) http.Handler {

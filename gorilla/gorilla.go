@@ -102,6 +102,7 @@ func (gorilla Gorilla) PopLoad(req *http.Request, key string, result interface{}
 	return nil
 }
 
+// Middleware session middleware
 func (gorilla Gorilla) Middleware(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		defer gorillaContext.Clear(req)

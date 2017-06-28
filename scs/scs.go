@@ -20,11 +20,13 @@ func (scs SCS) Add(req *http.Request, key string, value interface{}) error {
 	if str, ok := value.(string); ok {
 		return scssession.PutString(req, key, str)
 	}
-	return scssession.PutObject(req, key, value)
+	result, _ := json.Marshal(value)
+	return scssession.PutString(req, key, string(result))
 }
 
 func (scs SCS) Pop(req *http.Request, key string) string {
-	return ""
+	result, _ := scssession.PopString(req, key)
+	return result
 }
 
 func (scs SCS) Get(req *http.Request, key string) string {
@@ -33,7 +35,12 @@ func (scs SCS) Get(req *http.Request, key string) string {
 }
 
 func (scs SCS) Flash(req *http.Request, message session.Message) error {
-	return nil
+	var messages []session.Message
+	if err := scs.Load(req, "_flashes", &messages); err != nil {
+		return err
+	}
+	messages = append(messages, message)
+	return scs.Add(req, "_flashes", messages)
 }
 
 func (scs SCS) Flashes(req *http.Request) []session.Message {
@@ -53,8 +60,5 @@ func (scs SCS) PopLoad(req *http.Request, key string, result interface{}) error 
 }
 
 func (scs SCS) Middleware(handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		// FIXME
-		handler.ServeHTTP(w, req)
-	})
+	return scssession.Manage(scs.Engine)(handler)
 }

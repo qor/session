@@ -39,16 +39,19 @@ func (site Site) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func TestAll(manager session.ManagerInterface, t *testing.T) {
 	Server = httptest.NewServer(manager.Middleware(Site{SessionManager: manager}))
+	newReq := func() *http.Request {
+		req, _ := http.NewRequest("GET", "/", nil)
+		return req
+	}
 
-	req, _ := http.NewRequest("GET", "/", nil)
-	TestSesionManagerAddAndGet(req, manager, t)
-	TestSesionManagerAddAndPop(req, manager, t)
-	TestFlash(req, manager, t)
-	TestLoad(req, manager, t)
-	TestRequest(manager, t)
+	TestWithRequest(manager, t)
+	TestAddAndGet(newReq(), manager, t)
+	TestAddAndPop(newReq(), manager, t)
+	TestFlash(newReq(), manager, t)
+	TestLoad(newReq(), manager, t)
 }
 
-func TestRequest(manager session.ManagerInterface, t *testing.T) {
+func TestWithRequest(manager session.ManagerInterface, t *testing.T) {
 	maps := map[string]interface{}{
 		"key":               "value",
 		"中文测试":              "中文测试",
@@ -95,7 +98,7 @@ func TestRequest(manager session.ManagerInterface, t *testing.T) {
 	}
 }
 
-func TestSesionManagerAddAndGet(req *http.Request, manager session.ManagerInterface, t *testing.T) {
+func TestAddAndGet(req *http.Request, manager session.ManagerInterface, t *testing.T) {
 	if err := manager.Add(req, "key", "value"); err != nil {
 		t.Errorf("Should add session correctly, but got %v", err)
 	}
@@ -109,21 +112,7 @@ func TestSesionManagerAddAndGet(req *http.Request, manager session.ManagerInterf
 	}
 }
 
-func TestSesionManagerAddAndGet1(req *http.Request, manager session.ManagerInterface, t *testing.T) {
-	if err := manager.Add(req, "key", "value"); err != nil {
-		t.Errorf("Should add session correctly, but got %v", err)
-	}
-
-	if value := manager.Get(req, "key"); value != "value" {
-		t.Errorf("failed to fetch saved session value, got %#v", value)
-	}
-
-	if value := manager.Get(req, "key"); value != "value" {
-		t.Errorf("possible to re-fetch saved session value, got %#v", value)
-	}
-}
-
-func TestSesionManagerAddAndPop(req *http.Request, manager session.ManagerInterface, t *testing.T) {
+func TestAddAndPop(req *http.Request, manager session.ManagerInterface, t *testing.T) {
 	if err := manager.Add(req, "key", "value"); err != nil {
 		t.Errorf("Should add session correctly, but got %v", err)
 	}

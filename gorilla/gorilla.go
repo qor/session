@@ -1,12 +1,14 @@
 package gorilla
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/context"
+	gorillaContext "github.com/gorilla/context"
 	"github.com/gorilla/sessions"
+	"github.com/qor/qor/utils"
 	"github.com/qor/session"
 )
 
@@ -19,7 +21,19 @@ type Gorilla struct {
 	Store       sessions.Store
 }
 
+var writer utils.ContextKey = "writer"
+
+func (gorilla Gorilla) saveSession(req *http.Request) {
+	if session, err := gorilla.Store.Get(req, gorilla.SessionName); err == nil {
+		if w, ok := req.Context().Value(writer).(http.ResponseWriter); ok {
+			session.Save(req, w)
+		}
+	}
+}
+
 func (gorilla Gorilla) Add(req *http.Request, key string, value interface{}) error {
+	defer gorilla.saveSession(req)
+
 	session, err := gorilla.Store.Get(req, gorilla.SessionName)
 
 	if err != nil {
@@ -37,6 +51,8 @@ func (gorilla Gorilla) Add(req *http.Request, key string, value interface{}) err
 }
 
 func (gorilla Gorilla) Pop(req *http.Request, key string) string {
+	defer gorilla.saveSession(req)
+
 	if session, err := gorilla.Store.Get(req, gorilla.SessionName); err == nil {
 		if value, ok := session.Values[key]; ok {
 			delete(session.Values, key)
@@ -88,13 +104,8 @@ func (gorilla Gorilla) PopLoad(req *http.Request, key string, result interface{}
 
 func (gorilla Gorilla) Middleware(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		defer func() {
-			if session, err := gorilla.Store.Get(req, gorilla.SessionName); err == nil {
-				session.Save(req, w)
-			}
-			context.Clear(req)
-		}()
+		defer gorillaContext.Clear(req)
 
-		handler.ServeHTTP(w, req)
+		handler.ServeHTTP(w, req.WithContext(context.WithValue(req.Context(), writer, w)))
 	})
 }

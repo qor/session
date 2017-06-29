@@ -109,6 +109,26 @@ func TestWithRequest(manager session.ManagerInterface, t *testing.T) {
 		if string(responseData2) != value {
 			t.Errorf("failed to get saved session, expect %v, but got %v", value, string(responseData2))
 		}
+
+		resp, err = client.Get(Server.URL + "/pop?" + getQuery.Encode())
+		if err != nil {
+			t.Errorf("no error should happend when request pop cookie")
+		}
+
+		responseData3, _ := ioutil.ReadAll(resp.Body)
+		if string(responseData3) != value {
+			t.Errorf("failed to pop saved session, expect %v, but got %v", value, string(responseData3))
+		}
+
+		resp, err = client.Get(Server.URL + "/get?" + getQuery.Encode())
+		if err != nil {
+			t.Errorf("no error should happend when request pop cookie")
+		}
+
+		responseData4, _ := ioutil.ReadAll(resp.Body)
+		if string(responseData4) == value {
+			t.Errorf("should not be able to get session data after pop, but got %v", string(responseData4))
+		}
 	}
 }
 

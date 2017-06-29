@@ -12,10 +12,12 @@ import (
 	"github.com/qor/session"
 )
 
+// New initialize session manager for gorilla
 func New(sessionName string, store sessions.Store) *Gorilla {
 	return &Gorilla{SessionName: sessionName, Store: store}
 }
 
+// Gorilla session manager struct for gorilla
 type Gorilla struct {
 	SessionName string
 	Store       sessions.Store
@@ -31,6 +33,7 @@ func (gorilla Gorilla) saveSession(req *http.Request) {
 	}
 }
 
+// Add value to session data, if value is not string, will marshal it into JSON encoding and save it into session data.
 func (gorilla Gorilla) Add(req *http.Request, key string, value interface{}) error {
 	defer gorilla.saveSession(req)
 
@@ -50,6 +53,7 @@ func (gorilla Gorilla) Add(req *http.Request, key string, value interface{}) err
 	return nil
 }
 
+// Pop value from session data
 func (gorilla Gorilla) Pop(req *http.Request, key string) string {
 	defer gorilla.saveSession(req)
 
@@ -62,6 +66,7 @@ func (gorilla Gorilla) Pop(req *http.Request, key string) string {
 	return ""
 }
 
+// Get value from session data
 func (gorilla Gorilla) Get(req *http.Request, key string) string {
 	if session, err := gorilla.Store.Get(req, gorilla.SessionName); err == nil {
 		if value, ok := session.Values[key]; ok {
@@ -71,6 +76,7 @@ func (gorilla Gorilla) Get(req *http.Request, key string) string {
 	return ""
 }
 
+// Flash add flash message to session data
 func (gorilla Gorilla) Flash(req *http.Request, message session.Message) error {
 	var messages []session.Message
 	if err := gorilla.Load(req, "_flashes", &messages); err != nil {
@@ -80,12 +86,14 @@ func (gorilla Gorilla) Flash(req *http.Request, message session.Message) error {
 	return gorilla.Add(req, "_flashes", messages)
 }
 
+// Flashes returns a slice of flash messages from session data
 func (gorilla Gorilla) Flashes(req *http.Request) []session.Message {
 	var messages []session.Message
 	gorilla.PopLoad(req, "_flashes", &messages)
 	return messages
 }
 
+// Load get value from session data and unmarshal it into result
 func (gorilla Gorilla) Load(req *http.Request, key string, result interface{}) error {
 	value := gorilla.Get(req, key)
 	if value != "" {
@@ -94,6 +102,7 @@ func (gorilla Gorilla) Load(req *http.Request, key string, result interface{}) e
 	return nil
 }
 
+// PopLoad pop value from session data and unmarshal it into result
 func (gorilla Gorilla) PopLoad(req *http.Request, key string, result interface{}) error {
 	value := gorilla.Pop(req, key)
 	if value != "" {
@@ -102,7 +111,7 @@ func (gorilla Gorilla) PopLoad(req *http.Request, key string, result interface{}
 	return nil
 }
 
-// Middleware session middleware
+// Middleware returns a new session manager middleware instance.
 func (gorilla Gorilla) Middleware(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		defer gorillaContext.Clear(req)

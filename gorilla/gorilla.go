@@ -38,7 +38,9 @@ func (gorilla Gorilla) getSession(req *http.Request) (*sessions.Session, error) 
 func (gorilla Gorilla) saveSession(req *http.Request) {
 	if session, err := gorilla.getSession(req); err == nil {
 		if w, ok := req.Context().Value(writer).(http.ResponseWriter); ok {
-			session.Save(req, w)
+			if err := session.Save(req, w); err != nil {
+				fmt.Printf("No error should happen when saving session data, but got %v", err)
+			}
 		}
 	}
 }

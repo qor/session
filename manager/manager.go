@@ -7,4 +7,4 @@ import (
 )
 
 // SessionManager default session manager
-var SessionManager session.ManagerInterface = gorilla.New("_session", sessions.NewCookieStore())
+var SessionManager session.ManagerInterface = gorilla.New("_session", sessions.NewCookieStore([]byte("secret")))

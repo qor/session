@@ -9,13 +9,14 @@ import (
 )
 
 // New initialize session manager for SCS
-func New(engine scssession.Engine) *SCS {
-	return &SCS{Engine: engine}
+func New(engine scssession.Engine, opts ...scssession.Option) *SCS {
+	return &SCS{Engine: engine, Options: opts}
 }
 
 // SCS session manager struct for SCS
 type SCS struct {
 	scssession.Engine
+	Options []scssession.Option
 }
 
 // Add value to session data, if value is not string, will marshal it into JSON encoding and save it into session data.
@@ -76,5 +77,5 @@ func (scs SCS) PopLoad(req *http.Request, key string, result interface{}) error 
 
 // Middleware returns a new session manager middleware instance.
 func (scs SCS) Middleware(handler http.Handler) http.Handler {
-	return scssession.Manage(scs.Engine)(handler)
+	return scssession.Manage(scs.Engine, scs.Options...)(handler)
 }

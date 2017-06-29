@@ -111,7 +111,7 @@ func (gorilla Gorilla) PopLoad(req *http.Request, key string, result interface{}
 	return nil
 }
 
-// Middleware returns a new session manager middleware instance.
+// Middleware returns a new session manager middleware instance
 func (gorilla Gorilla) Middleware(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		defer gorillaContext.Clear(req)

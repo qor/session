@@ -28,21 +28,23 @@ func main() {
   mux.HandleFunc("/get", getHandler)
   // Your routes
 
-  // Wrap your application's handlers or router with manager's Middleware
+  // Wrap your application's handlers or router with session manager's middleware
   http.ListenAndServe(":7000", manager.Middleware(mux))
 }
 
 func putHandler(w http.ResponseWriter, req *http.Request) {
+  // Store a key and associated value into session data
   SessionManager.Add(req, "key", "value")
 }
 
 func getHandler(w http.ResponseWriter, req *http.Request) {
+  // Get saved session data with key
   value := SessionManager.Get(req, "key")
   io.WriteString(w, value)
 }
 ```
 
-## Common Interface
+## Session Manager's Interface
 
 ```go
 type ManagerInterface interface {
@@ -69,6 +71,22 @@ type ManagerInterface interface {
 
   // Middleware returns a new session manager middleware instance.
   Middleware(http.Handler) http.Handler
+}
+```
+
+## QOR Integration
+
+We have created a default session manager in package `github.com/qor/session/manager`, which is used in some QOR libs like QOR Admin to manage session data, you could overwrite or used it for your application.
+
+```go
+import (
+	"github.com/qor/session/manager"
+)
+
+func main() {
+	// Overwrite session manager
+	engine := sessions.NewCookieStore([]byte("something-very-secret"))
+	manager.SessionManager = gorilla.New("_gorilla_session", engine)
 }
 ```
 

@@ -75,7 +75,7 @@ func (scs SCS) PopLoad(req *http.Request, key string, result interface{}) error 
 	return nil
 }
 
-// Middleware returns a new session manager middleware instance.
+// Middleware returns a new session manager middleware instance
 func (scs SCS) Middleware(handler http.Handler) http.Handler {
 	return scssession.Manage(scs.Engine, scs.Options...)(handler)
 }

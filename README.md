@@ -76,7 +76,15 @@ type ManagerInterface interface {
 
 ## QOR Integration
 
-We have created a default session manager in package `github.com/qor/session/manager`, which is used in some QOR libs like QOR Admin to manage session data, you could overwrite or used it for your application.
+We have created a default session manager in package `github.com/qor/session/manager`, which is used in some QOR libs like QOR Admin, QOR Auth by default to manage session, flash messages.
+
+It is defined like below:
+
+```go
+var SessionManager session.ManagerInterface = gorilla.New("_session", sessions.NewCookieStore([]byte("secret")))
+```
+
+You should change it to your own session storage or use your own secret code.
 
 ```go
 import (
@@ -85,7 +93,7 @@ import (
 
 func main() {
 	// Overwrite session manager
-	engine := sessions.NewCookieStore([]byte("something-very-secret"))
+	engine := sessions.NewCookieStore([]byte("your-own-secret-code"))
 	manager.SessionManager = gorilla.New("_gorilla_session", engine)
 }
 ```

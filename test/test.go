@@ -65,6 +65,15 @@ func TestAll(manager session.ManagerInterface, t *testing.T) {
 	TestLoad(newReq(), manager, t)
 }
 
+func newClient(resp *http.Response) *http.Client {
+	// Get cookie in another request
+	cookieJar, _ := cookiejar.New(nil)
+	u, _ := url.Parse(Server.URL)
+	cookieJar.SetCookies(u, resp.Cookies())
+
+	return &http.Client{Jar: cookieJar}
+}
+
 func TestWithRequest(manager session.ManagerInterface, t *testing.T) {
 	maps := map[string]interface{}{
 		"key":               "value",
@@ -89,18 +98,9 @@ func TestWithRequest(manager session.ManagerInterface, t *testing.T) {
 			t.Errorf("failed to get saved session, expect %v, but got %v", value, string(responseData))
 		}
 
-		// Get cookie in another request
-		cookieJar, _ := cookiejar.New(nil)
-		u, _ := url.Parse(Server.URL)
-		cookieJar.SetCookies(u, resp.Cookies())
-
-		client := &http.Client{
-			Jar: cookieJar,
-		}
-
 		getQuery := url.Values{}
 		getQuery.Add("key", key)
-		resp, err = client.Get(Server.URL + "/get?" + getQuery.Encode())
+		resp, err = newClient(resp).Get(Server.URL + "/get?" + getQuery.Encode())
 		if err != nil {
 			t.Errorf("no error should happend when request get cookie")
 		}
@@ -110,7 +110,7 @@ func TestWithRequest(manager session.ManagerInterface, t *testing.T) {
 			t.Errorf("failed to get saved session, expect %v, but got %v", value, string(responseData2))
 		}
 
-		resp, err = client.Get(Server.URL + "/pop?" + getQuery.Encode())
+		resp, err = newClient(resp).Get(Server.URL + "/pop?" + getQuery.Encode())
 		if err != nil {
 			t.Errorf("no error should happend when request pop cookie")
 		}
@@ -120,13 +120,13 @@ func TestWithRequest(manager session.ManagerInterface, t *testing.T) {
 			t.Errorf("failed to pop saved session, expect %v, but got %v", value, string(responseData3))
 		}
 
-		resp, err = client.Get(Server.URL + "/get?" + getQuery.Encode())
+		resp, err = newClient(resp).Get(Server.URL + "/get?" + getQuery.Encode())
 		if err != nil {
 			t.Errorf("no error should happend when request pop cookie")
 		}
 
 		responseData4, _ := ioutil.ReadAll(resp.Body)
-		if string(responseData4) == value {
+		if string(responseData4) != "" {
 			t.Errorf("should not be able to get session data after pop, but got %v", string(responseData4))
 		}
 	}

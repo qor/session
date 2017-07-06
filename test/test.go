@@ -7,6 +7,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/qor/session"
@@ -26,6 +27,14 @@ func (site Site) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	case "/pop":
 		value := site.SessionManager.Pop(req, req.URL.Query().Get("key"))
 		w.Write([]byte(value))
+	case "/setflash":
+		site.SessionManager.Flash(req, session.Message{Message: req.URL.Query().Get("message")})
+	case "/getflash":
+		messages := []string{}
+		for _, flash := range site.SessionManager.Flashes(req) {
+			messages = append(messages, flash.Message)
+		}
+		w.Write([]byte(strings.Join(messages, ", ")))
 	case "/set":
 		err := site.SessionManager.Add(req, req.URL.Query().Get("key"), req.URL.Query().Get("value"))
 		if err != nil {
@@ -98,9 +107,10 @@ func TestWithRequest(manager session.ManagerInterface, t *testing.T) {
 			t.Errorf("failed to get saved session, expect %v, but got %v", value, string(responseData))
 		}
 
+		client := newClient(resp)
 		getQuery := url.Values{}
 		getQuery.Add("key", key)
-		resp, err = newClient(resp).Get(Server.URL + "/get?" + getQuery.Encode())
+		resp, err = client.Get(Server.URL + "/get?" + getQuery.Encode())
 		if err != nil {
 			t.Errorf("no error should happend when request get cookie")
 		}
@@ -110,7 +120,7 @@ func TestWithRequest(manager session.ManagerInterface, t *testing.T) {
 			t.Errorf("failed to get saved session, expect %v, but got %v", value, string(responseData2))
 		}
 
-		resp, err = newClient(resp).Get(Server.URL + "/pop?" + getQuery.Encode())
+		resp, err = client.Get(Server.URL + "/pop?" + getQuery.Encode())
 		if err != nil {
 			t.Errorf("no error should happend when request pop cookie")
 		}
@@ -120,7 +130,7 @@ func TestWithRequest(manager session.ManagerInterface, t *testing.T) {
 			t.Errorf("failed to pop saved session, expect %v, but got %v", value, string(responseData3))
 		}
 
-		resp, err = newClient(resp).Get(Server.URL + "/get?" + getQuery.Encode())
+		resp, err = client.Get(Server.URL + "/get?" + getQuery.Encode())
 		if err != nil {
 			t.Errorf("no error should happend when request pop cookie")
 		}
@@ -128,6 +138,36 @@ func TestWithRequest(manager session.ManagerInterface, t *testing.T) {
 		responseData4, _ := ioutil.ReadAll(resp.Body)
 		if string(responseData4) != "" {
 			t.Errorf("should not be able to get session data after pop, but got %v", string(responseData4))
+		}
+
+		_, err = client.Get(Server.URL + "/setflash?message=message1")
+		if err != nil {
+			t.Errorf("no error should happend when request set flash")
+		}
+
+		_, err = client.Get(Server.URL + "/setflash?message=message2")
+		if err != nil {
+			t.Errorf("no error should happend when request set flash")
+		}
+
+		resp, err = client.Get(Server.URL + "/getflash")
+		if err != nil {
+			t.Errorf("no error should happend when request get flash")
+		}
+
+		responseData5, _ := ioutil.ReadAll(resp.Body)
+		if string(responseData5) != "message1, message2" {
+			t.Errorf("should be able to get saved flash data, but got %v", string(responseData5))
+		}
+
+		resp, err = client.Get(Server.URL + "/getflash")
+		if err != nil {
+			t.Errorf("no error should happend when request get flash")
+		}
+
+		responseData6, _ := ioutil.ReadAll(resp.Body)
+		if string(responseData6) != "" {
+			t.Errorf("should get blank string when get flashes second time, but got %v", string(responseData6))
 		}
 	}
 }

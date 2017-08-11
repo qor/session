@@ -1,6 +1,9 @@
 package session
 
-import "net/http"
+import (
+	"html/template"
+	"net/http"
+)
 
 // ManagerInterface session manager interface
 type ManagerInterface interface {
@@ -27,6 +30,6 @@ type ManagerInterface interface {
 
 // Message message struct
 type Message struct {
-	Message string
+	Message template.HTML
 	Type    string
 }

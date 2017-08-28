@@ -33,7 +33,7 @@ func (beegosession BeegoSession) getSession(req *http.Request) (beego_session.St
 // Add value to session data, if value is not string, will marshal it into JSON encoding and save it into session data.
 func (beegosession BeegoSession) Add(req *http.Request, key string, value interface{}) error {
 	sess, _ := beegosession.getSession(req)
-	defer sess.SessionRelease(nil)
+	defer sess.SessionRelease(req.Context().Value(writer).(http.ResponseWriter))
 
 	if str, ok := value.(string); ok {
 		return sess.Set(key, str)
@@ -45,18 +45,26 @@ func (beegosession BeegoSession) Add(req *http.Request, key string, value interf
 // Pop value from session data
 func (beegosession BeegoSession) Pop(req *http.Request, key string) string {
 	sess, _ := beegosession.getSession(req)
-	defer sess.SessionRelease(nil)
+	defer sess.SessionRelease(req.Context().Value(writer).(http.ResponseWriter))
 
-	result := fmt.Sprint(sess.Get(key))
+	result := sess.Get(key)
 
 	sess.Delete(key)
-	return result
+	if result != nil {
+		return fmt.Sprint(result)
+	}
+	return ""
 }
 
 // Get value from session data
 func (beegosession BeegoSession) Get(req *http.Request, key string) string {
 	sess, _ := beegosession.getSession(req)
-	return fmt.Sprint(sess.Get(key))
+
+	result := sess.Get(key)
+	if result != nil {
+		return fmt.Sprint(result)
+	}
+	return ""
 }
 
 // Flash add flash message to session data

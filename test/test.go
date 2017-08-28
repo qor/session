@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
@@ -28,11 +29,11 @@ func (site Site) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		value := site.SessionManager.Pop(req, req.URL.Query().Get("key"))
 		w.Write([]byte(value))
 	case "/setflash":
-		site.SessionManager.Flash(req, session.Message{Message: req.URL.Query().Get("message")})
+		site.SessionManager.Flash(req, session.Message{Message: template.HTML(req.URL.Query().Get("message"))})
 	case "/getflash":
 		messages := []string{}
 		for _, flash := range site.SessionManager.Flashes(req) {
-			messages = append(messages, flash.Message)
+			messages = append(messages, string(flash.Message))
 		}
 		w.Write([]byte(strings.Join(messages, ", ")))
 	case "/set":

@@ -26,18 +26,18 @@ func (site Site) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		value := site.SessionManager.Get(req, req.URL.Query().Get("key"))
 		w.Write([]byte(value))
 	case "/pop":
-		value := site.SessionManager.Pop(req, req.URL.Query().Get("key"))
+		value := site.SessionManager.Pop(w, req, req.URL.Query().Get("key"))
 		w.Write([]byte(value))
 	case "/setflash":
-		site.SessionManager.Flash(req, session.Message{Message: template.HTML(req.URL.Query().Get("message"))})
+		site.SessionManager.Flash(w, req, session.Message{Message: template.HTML(req.URL.Query().Get("message"))})
 	case "/getflash":
 		messages := []string{}
-		for _, flash := range site.SessionManager.Flashes(req) {
+		for _, flash := range site.SessionManager.Flashes(w, req) {
 			messages = append(messages, string(flash.Message))
 		}
 		w.Write([]byte(strings.Join(messages, ", ")))
 	case "/set":
-		err := site.SessionManager.Add(req, req.URL.Query().Get("key"), req.URL.Query().Get("value"))
+		err := site.SessionManager.Add(w, req, req.URL.Query().Get("key"), req.URL.Query().Get("value"))
 		if err != nil {
 			panic(fmt.Sprintf("No error should happe when set session, but got %v", err))
 		}
@@ -69,10 +69,10 @@ func TestAll(manager session.ManagerInterface, t *testing.T) {
 	}
 
 	TestWithRequest(manager, t)
-	TestAddAndGet(newReq(), manager, t)
-	TestAddAndPop(newReq(), manager, t)
-	TestFlash(newReq(), manager, t)
-	TestLoad(newReq(), manager, t)
+	TestAddAndGet(httptest.NewRecorder(), newReq(), manager, t)
+	TestAddAndPop(httptest.NewRecorder(), newReq(), manager, t)
+	TestFlash(httptest.NewRecorder(), newReq(), manager, t)
+	TestLoad(httptest.NewRecorder(), newReq(), manager, t)
 }
 
 func newClient(resp *http.Response) *http.Client {
@@ -173,8 +173,8 @@ func TestWithRequest(manager session.ManagerInterface, t *testing.T) {
 	}
 }
 
-func TestAddAndGet(req *http.Request, manager session.ManagerInterface, t *testing.T) {
-	if err := manager.Add(req, "key", "value"); err != nil {
+func TestAddAndGet(w http.ResponseWriter, req *http.Request, manager session.ManagerInterface, t *testing.T) {
+	if err := manager.Add(w, req, "key", "value"); err != nil {
 		t.Errorf("Should add session correctly, but got %v", err)
 	}
 
@@ -187,45 +187,45 @@ func TestAddAndGet(req *http.Request, manager session.ManagerInterface, t *testi
 	}
 }
 
-func TestAddAndPop(req *http.Request, manager session.ManagerInterface, t *testing.T) {
-	if err := manager.Add(req, "key", "value"); err != nil {
+func TestAddAndPop(w http.ResponseWriter, req *http.Request, manager session.ManagerInterface, t *testing.T) {
+	if err := manager.Add(w, req, "key", "value"); err != nil {
 		t.Errorf("Should add session correctly, but got %v", err)
 	}
 
-	if value := manager.Pop(req, "key"); value != "value" {
+	if value := manager.Pop(w, req, "key"); value != "value" {
 		t.Errorf("failed to fetch saved session value, got %#v", value)
 	}
 
-	if value := manager.Pop(req, "key"); value == "value" {
+	if value := manager.Pop(w, req, "key"); value == "value" {
 		t.Errorf("can't re-fetch saved session value after get with Pop, got %#v", value)
 	}
 }
 
-func TestFlash(req *http.Request, manager session.ManagerInterface, t *testing.T) {
-	if err := manager.Flash(req, session.Message{
+func TestFlash(w http.ResponseWriter, req *http.Request, manager session.ManagerInterface, t *testing.T) {
+	if err := manager.Flash(w, req, session.Message{
 		Message: "hello1",
 	}); err != nil {
 		t.Errorf("No error should happen when add Flash, but got %v", err)
 	}
 
-	if err := manager.Flash(req, session.Message{
+	if err := manager.Flash(w, req, session.Message{
 		Message: "hello2",
 	}); err != nil {
 		t.Errorf("No error should happen when add Flash, but got %v", err)
 	}
 
-	flashes := manager.Flashes(req)
+	flashes := manager.Flashes(w, req)
 	if len(flashes) != 2 {
 		t.Errorf("should find 2 flash messages")
 	}
 
-	flashes2 := manager.Flashes(req)
+	flashes2 := manager.Flashes(w, req)
 	if len(flashes2) != 0 {
 		t.Errorf("flash should be cleared when fetch it second time, but got %v", len(flashes2))
 	}
 }
 
-func TestLoad(req *http.Request, manager session.ManagerInterface, t *testing.T) {
+func TestLoad(w http.ResponseWriter, req *http.Request, manager session.ManagerInterface, t *testing.T) {
 	type result struct {
 		Name    string
 		Age     int
@@ -233,7 +233,7 @@ func TestLoad(req *http.Request, manager session.ManagerInterface, t *testing.T)
 	}
 
 	user := result{Name: "jinzhu", Age: 18, Actived: true}
-	manager.Add(req, "current_user", user)
+	manager.Add(w, req, "current_user", user)
 
 	var user1 result
 	if err := manager.Load(req, "current_user", &user1); err != nil {
@@ -254,7 +254,7 @@ func TestLoad(req *http.Request, manager session.ManagerInterface, t *testing.T)
 	}
 
 	var user3 result
-	if err := manager.PopLoad(req, "current_user", &user3); err != nil {
+	if err := manager.PopLoad(w, req, "current_user", &user3); err != nil {
 		t.Errorf("no error should happen when PopLoad struct")
 	}
 

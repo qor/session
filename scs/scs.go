@@ -80,5 +80,5 @@ func (scs SCS) PopLoad(w http.ResponseWriter, req *http.Request, key string, res
 
 // Middleware returns a new session manager middleware instance
 func (scs SCS) Middleware(handler http.Handler) http.Handler {
-	return handler
+	return scs.Manager.Multi(handler)
 }

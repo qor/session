@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 
 	beego_session "github.com/astaxie/beego/session"
 	"github.com/qor/qor/utils"
@@ -23,17 +24,14 @@ type BeegoSession struct {
 	*beego_session.Manager
 }
 
-func (beegosession BeegoSession) getSession(req *http.Request) (beego_session.Store, error) {
-	if w, ok := req.Context().Value(writer).(http.ResponseWriter); ok {
-		return beegosession.Manager.SessionStart(w, req)
-	}
-	panic("middleware not applied")
+func (beegosession BeegoSession) getSession(w http.ResponseWriter, req *http.Request) (beego_session.Store, error) {
+	return beegosession.Manager.SessionStart(w, req)
 }
 
 // Add value to session data, if value is not string, will marshal it into JSON encoding and save it into session data.
-func (beegosession BeegoSession) Add(req *http.Request, key string, value interface{}) error {
-	sess, _ := beegosession.getSession(req)
-	defer sess.SessionRelease(req.Context().Value(writer).(http.ResponseWriter))
+func (beegosession BeegoSession) Add(w http.ResponseWriter, req *http.Request, key string, value interface{}) error {
+	sess, _ := beegosession.getSession(w, req)
+	defer sess.SessionRelease(w)
 
 	if str, ok := value.(string); ok {
 		return sess.Set(key, str)
@@ -43,9 +41,9 @@ func (beegosession BeegoSession) Add(req *http.Request, key string, value interf
 }
 
 // Pop value from session data
-func (beegosession BeegoSession) Pop(req *http.Request, key string) string {
-	sess, _ := beegosession.getSession(req)
-	defer sess.SessionRelease(req.Context().Value(writer).(http.ResponseWriter))
+func (beegosession BeegoSession) Pop(w http.ResponseWriter, req *http.Request, key string) string {
+	sess, _ := beegosession.getSession(w, req)
+	defer sess.SessionRelease(w)
 
 	result := sess.Get(key)
 
@@ -58,7 +56,7 @@ func (beegosession BeegoSession) Pop(req *http.Request, key string) string {
 
 // Get value from session data
 func (beegosession BeegoSession) Get(req *http.Request, key string) string {
-	sess, _ := beegosession.getSession(req)
+	sess, _ := beegosession.getSession(httptest.NewRecorder(), req)
 
 	result := sess.Get(key)
 	if result != nil {
@@ -68,19 +66,19 @@ func (beegosession BeegoSession) Get(req *http.Request, key string) string {
 }
 
 // Flash add flash message to session data
-func (beegosession BeegoSession) Flash(req *http.Request, message session.Message) error {
+func (beegosession BeegoSession) Flash(w http.ResponseWriter, req *http.Request, message session.Message) error {
 	var messages []session.Message
 	if err := beegosession.Load(req, "_flashes", &messages); err != nil {
 		return err
 	}
 	messages = append(messages, message)
-	return beegosession.Add(req, "_flashes", messages)
+	return beegosession.Add(w, req, "_flashes", messages)
 }
 
 // Flashes returns a slice of flash messages from session data
-func (beegosession BeegoSession) Flashes(req *http.Request) []session.Message {
+func (beegosession BeegoSession) Flashes(w http.ResponseWriter, req *http.Request) []session.Message {
 	var messages []session.Message
-	beegosession.PopLoad(req, "_flashes", &messages)
+	beegosession.PopLoad(w, req, "_flashes", &messages)
 	return messages
 }
 
@@ -94,8 +92,8 @@ func (beegosession BeegoSession) Load(req *http.Request, key string, result inte
 }
 
 // PopLoad pop value from session data and unmarshal it into result
-func (beegosession BeegoSession) PopLoad(req *http.Request, key string, result interface{}) error {
-	value := beegosession.Pop(req, key)
+func (beegosession BeegoSession) PopLoad(w http.ResponseWriter, req *http.Request, key string, result interface{}) error {
+	value := beegosession.Pop(w, req, key)
 	if value != "" {
 		return json.Unmarshal([]byte(value), result)
 	}

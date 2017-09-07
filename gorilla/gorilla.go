@@ -23,10 +23,7 @@ type Gorilla struct {
 	Store       sessions.Store
 }
 
-var (
-	writer utils.ContextKey = "gorilla_writer"
-	reader utils.ContextKey = "gorilla_reader"
-)
+var reader utils.ContextKey = "gorilla_reader"
 
 func (gorilla Gorilla) getSession(req *http.Request) (*sessions.Session, error) {
 	if r, ok := req.Context().Value(reader).(*http.Request); ok {

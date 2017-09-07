@@ -35,19 +35,17 @@ func (gorilla Gorilla) getSession(req *http.Request) (*sessions.Session, error) 
 	return gorilla.Store.Get(req, gorilla.SessionName)
 }
 
-func (gorilla Gorilla) saveSession(req *http.Request) {
+func (gorilla Gorilla) saveSession(w http.ResponseWriter, req *http.Request) {
 	if session, err := gorilla.getSession(req); err == nil {
-		if w, ok := req.Context().Value(writer).(http.ResponseWriter); ok {
-			if err := session.Save(req, w); err != nil {
-				fmt.Printf("No error should happen when saving session data, but got %v", err)
-			}
+		if err := session.Save(req, w); err != nil {
+			fmt.Printf("No error should happen when saving session data, but got %v", err)
 		}
 	}
 }
 
 // Add value to session data, if value is not string, will marshal it into JSON encoding and save it into session data.
-func (gorilla Gorilla) Add(req *http.Request, key string, value interface{}) error {
-	defer gorilla.saveSession(req)
+func (gorilla Gorilla) Add(w http.ResponseWriter, req *http.Request, key string, value interface{}) error {
+	defer gorilla.saveSession(w, req)
 
 	session, err := gorilla.getSession(req)
 	if err != nil {
@@ -65,8 +63,8 @@ func (gorilla Gorilla) Add(req *http.Request, key string, value interface{}) err
 }
 
 // Pop value from session data
-func (gorilla Gorilla) Pop(req *http.Request, key string) string {
-	defer gorilla.saveSession(req)
+func (gorilla Gorilla) Pop(w http.ResponseWriter, req *http.Request, key string) string {
+	defer gorilla.saveSession(w, req)
 
 	if session, err := gorilla.getSession(req); err == nil {
 		if value, ok := session.Values[key]; ok {
@@ -88,19 +86,19 @@ func (gorilla Gorilla) Get(req *http.Request, key string) string {
 }
 
 // Flash add flash message to session data
-func (gorilla Gorilla) Flash(req *http.Request, message session.Message) error {
+func (gorilla Gorilla) Flash(w http.ResponseWriter, req *http.Request, message session.Message) error {
 	var messages []session.Message
 	if err := gorilla.Load(req, "_flashes", &messages); err != nil {
 		return err
 	}
 	messages = append(messages, message)
-	return gorilla.Add(req, "_flashes", messages)
+	return gorilla.Add(w, req, "_flashes", messages)
 }
 
 // Flashes returns a slice of flash messages from session data
-func (gorilla Gorilla) Flashes(req *http.Request) []session.Message {
+func (gorilla Gorilla) Flashes(w http.ResponseWriter, req *http.Request) []session.Message {
 	var messages []session.Message
-	gorilla.PopLoad(req, "_flashes", &messages)
+	gorilla.PopLoad(w, req, "_flashes", &messages)
 	return messages
 }
 
@@ -114,8 +112,8 @@ func (gorilla Gorilla) Load(req *http.Request, key string, result interface{}) e
 }
 
 // PopLoad pop value from session data and unmarshal it into result
-func (gorilla Gorilla) PopLoad(req *http.Request, key string, result interface{}) error {
-	value := gorilla.Pop(req, key)
+func (gorilla Gorilla) PopLoad(w http.ResponseWriter, req *http.Request, key string, result interface{}) error {
+	value := gorilla.Pop(w, req, key)
 	if value != "" {
 		return json.Unmarshal([]byte(value), result)
 	}
@@ -126,7 +124,7 @@ func (gorilla Gorilla) PopLoad(req *http.Request, key string, result interface{}
 func (gorilla Gorilla) Middleware(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		defer gorillaContext.Clear(req)
-		ctx := context.WithValue(context.WithValue(req.Context(), writer, w), reader, req)
+		ctx := context.WithValue(req.Context(), reader, req)
 		handler.ServeHTTP(w, req.WithContext(ctx))
 	})
 }
